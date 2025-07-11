@@ -1,0 +1,659 @@
+{
+  "name": "DeepSeek AI Agent + Telegram + LONG TERM Memory",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "5fe3c0d8-bd61-4943-b152-9e6315134520",
+              "operator": {
+                "name": "filter.operator.equals",
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $('Listen for Telegram Events').item.json.body.message.from.first_name }}",
+              "rightValue": "={{ $json.first_name }}"
+            },
+            {
+              "id": "98a0ea91-0567-459c-bbce-06abc14a49ce",
+              "operator": {
+                "name": "filter.operator.equals",
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $('Listen for Telegram Events').item.json.body.message.from.last_name }}",
+              "rightValue": "={{ $json.last_name }}"
+            },
+            {
+              "id": "18a96c1f-f2a0-4a2a-b789-606763df4423",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $('Listen for Telegram Events').item.json.body.message.from.id }}",
+              "rightValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "looseTypeValidation": "=",
+        "options": {}
+      },
+      "id": "f2e400fc-b00d-4bce-88ee-348ef5ce97ee",
+      "name": "Check User & Chat ID",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        680,
+        -520
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.body.message.chat.id }}",
+        "text": "=Unable to process your message.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "bd54654a-8ec3-4a1a-a551-f2c561d94920",
+      "name": "Error message",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        920,
+        -240
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "592c24f5-6716-4af5-8af4-cce9b0a198a0"
+    },
+    {
+      "parameters": {
+        "content": "# Receive Telegram Message with Webhook",
+        "height": 652,
+        "width": 949,
+        "color": 6
+      },
+      "id": "c0b6b3af-9919-4063-8531-49c5bb2c5085",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        220,
+        -680
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wbot",
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "id": "b28fa625-d512-4144-946e-d4a77e8ba94f",
+      "name": "Listen for Telegram Events",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        280,
+        -520
+      ],
+      "webhookId": "097f36f3-1574-44f9-815f-58387e3b20bf",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "content": "# How to set up a Telegram Bot WebHook\n\n## WebHook Setup Process\n\n**Basic Concept**\nA WebHook allows your Telegram bot to automatically receive updates instead of manually polling the Bot API.\n\n**Setup Method**\nTo set a WebHook, make a GET request using this URL format:\n```\nhttps://api.telegram.org/bot{my_bot_token}/setWebhook?url={url_to_send_updates_to}\n```\nWhere:\n- `my_bot_token`: Your bot token from BotFather\n- `url_to_send_updates_to`: Your HTTPS endpoint that handles bot updates\n\n\n**Verification**\nTo verify the WebHook setup, use:\n```\nhttps://api.telegram.org/bot{my_bot_token}/getWebhookInfo\n```\n\nA successful response looks like:\n```json\n{\n \"ok\": true,\n \"result\": {\n \"url\": \"https://www.example.com/my-telegram-bot/\",\n \"has_custom_certificate\": false,\n \"pending_update_count\": 0,\n \"max_connections\": 40\n }\n}\n```\n\n\nThis method provides a simple and efficient way to handle Telegram bot updates automatically through webhooks rather than manual polling.",
+        "height": 860,
+        "width": 800,
+        "color": 7
+      },
+      "id": "1387e6a7-311a-4e8b-88b0-7a24396bfcf7",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -620,
+        -700
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0cea6da1-652a-4c1e-94c3-30608ced90f8",
+              "name": "first_name",
+              "type": "string",
+              "value": "FirstName"
+            },
+            {
+              "id": "b90280c6-3e36-49ca-9e7e-e15c42d256cc",
+              "name": "last_name",
+              "type": "string",
+              "value": "LastName"
+            },
+            {
+              "id": "f6d86283-16ca-447e-8427-7d3d190babc0",
+              "name": "id",
+              "type": "number",
+              "value": 12345667891
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "0c255302-ba3d-45c2-84d1-f33f55206e58",
+      "name": "Validation",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        500,
+        -520
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "content": "## Validate Telegram User\n",
+        "height": 260,
+        "width": 420,
+        "color": 7
+      },
+      "id": "5ee56ebc-b1b3-4dcc-9da8-5105bd5133dd",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        440,
+        -580
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "object",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "leftValue": "={{ $json.body.message.voice }}",
+                    "rightValue": ""
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "audio"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "342f0883-d959-44a2-b80d-379e39c76218",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "leftValue": "={{ $json.body.message.text }}",
+                    "rightValue": ""
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "ded3a600-f861-413a-8892-3fc5ea935ecb",
+                    "operator": {
+                      "type": "array",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "leftValue": "={{ $json.body.message.photo }}",
+                    "rightValue": ""
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "image"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "7d2dd371-ca65-4a21-936d-cf1383bff03a",
+      "name": "Message Router",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        920,
+        -520
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Message Router').item.json.body.message.text }}",
+        "options": {
+          "systemMessage": "=## ROLE \nYou are a friendly, attentive, and helpful AI assistant. Your primary goal is to assist the user while maintaining a personalized and engaging interaction. The current user's first name is **{{ $json.body.message.from.first_name }}**.\n\n---\n\n## RULES \n\n1. **Memory Management**: \n - When the user sends a new message, evaluate whether it contains noteworthy or personal information (e.g., preferences, habits, goals, or important events). \n - If such information is identified, use the **Save Memory** tool to store this data in memory. \n - Always send a meaningful response back to the user, even if your primary action was saving information. This response should not reveal that information was stored but should acknowledge or engage with the user’s input naturally.\n\n2. **Context Awareness**: \n - Use stored memories to provide contextually relevant and personalized responses. \n - Always consider the **date and time** when a memory was collected to ensure your responses are up-to-date and accurate.\n\n3. **User-Centric Responses**: \n - Tailor your responses based on the user's preferences and past interactions. \n - Be proactive in recalling relevant details from memory when appropriate but avoid overwhelming the user with unnecessary information.\n\n4. **Privacy and Sensitivity**: \n - Handle all user data with care and sensitivity. Avoid making assumptions or sharing stored information unless it directly enhances the conversation or task at hand.\n\n5. **Fallback Responses**: \n - **IMPORTANT** If no specific task or question arises from the user’s message (e.g., when only saving information), respond in a way that keeps the conversation flowing naturally. For example:\n - Acknowledge their input: “Thanks for sharing that!” \n - Provide a friendly follow-up: “Is there anything else I can help you with today?”\n - DO NOT tell Jokes as a fall back response.\n\n---\n\n## TOOLS \n\n### Save Memory \n- Use this tool to store summarized, concise, and meaningful information about the user. \n- Extract key details from user messages that could enhance future interactions (e.g., likes/dislikes, important dates, hobbies). \n- Ensure that the summary is clear and devoid of unnecessary details.\n\n---\n\n## MEMORIES \n\n### Recent Noteworthy Memories \nHere are the most recent memories collected from the user, including their date and time of collection: \n\n**{{ $('Retrieve Long Term Memories').item.json.content }}**\n\n### Guidelines for Using Memories: \n- Prioritize recent memories but do not disregard older ones if they remain relevant. \n- Cross-reference memories to maintain consistency in your responses. For example, if a user shares conflicting preferences over time, clarify or adapt accordingly.\n\n---\n\n## ADDITIONAL INSTRUCTIONS \n\n- Think critically before responding to ensure your answers are thoughtful and accurate. \n- Strive to build trust with the user by being consistent, reliable, and personable in your interactions. \n- Avoid robotic or overly formal language; aim for a conversational tone that aligns with being \"friendly and helpful.\" \n"
+        }
+      },
+      "id": "2526a79c-5d68-4f43-9fae-b98c475f0371",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1620,
+        -340
+      ],
+      "typeVersion": 1.7,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "da411ad5-2245-466e-bc90-edab35674571",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        1620,
+        -580
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.id }}",
+        "contextWindowLength": 50
+      },
+      "id": "b88c62e1-a4b0-4900-ac71-ad4c55e1dc56",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        1680,
+        100
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ca1b4c49-a6cf-4503-ad51-cdb15321a117",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        280,
+        -260
+      ],
+      "webhookId": "701ddc24-2637-466e-9789-5d47145333a8",
+      "typeVersion": 1.1,
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "# Process Text Message",
+        "height": 1029,
+        "width": 1033,
+        "color": 5
+      },
+      "id": "ac2a7b57-d88c-40a3-a8c3-6a773c3e8776",
+      "name": "Sticky Note10",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1200,
+        -700
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Listen for Telegram Events').item.json.body.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "c25797a8-c3e6-4f0f-990d-b014c0332034",
+      "name": "Telegram Response",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        2000,
+        -520
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "92042775-ea96-41f6-befb-90a2563f495e"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Save memories",
+        "operation": "update",
+        "documentURL": "[Google Doc ID]",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "= Memory: {{ $fromAI('memory') }} - Date: {{ $now }} "
+            }
+          ]
+        }
+      },
+      "id": "84ab8dcf-d85d-42b8-b54a-84fdcafb008e",
+      "name": "Save Long Term Memories",
+      "type": "n8n-nodes-base.googleDocsTool",
+      "position": [
+        2020,
+        100
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "content": "## Retrieve Long Term Memories\nGoogle Docs",
+        "height": 340,
+        "width": 300,
+        "color": 4
+      },
+      "id": "7af41259-9989-41d3-9a76-5c2ccbc99abb",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1220,
+        -460
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "[Google Doc ID]"
+      },
+      "id": "4b4c2c43-0fd9-4fb0-b8ca-095b7a513e9d",
+      "name": "Retrieve Long Term Memories",
+      "type": "n8n-nodes-base.googleDocs",
+      "position": [
+        1320,
+        -320
+      ],
+      "typeVersion": 2,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "content": "## Save To Current Chat Memory (Optional)",
+        "height": 320,
+        "width": 280
+      },
+      "id": "28f99070-9693-4e2c-b46b-be2520e4fd94",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1580,
+        -20
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Save Long Term Memories\nGoogle Docs",
+        "height": 320,
+        "width": 280,
+        "color": 4
+      },
+      "id": "99a87f20-189e-41f0-bb63-5a1507d65dc9",
+      "name": "Sticky Note6",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1920,
+        -20
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Listen for Telegram Events').item.json.body.message.chat.id }}",
+        "text": "=Unable to process your message.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "dfd10a6c-a63c-4aa1-b6e0-d32631dc2ce2",
+      "name": "Response Error message",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        2000,
+        -320
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "53624971-b82b-4108-9833-e8c7754eeaf6"
+    },
+    {
+      "parameters": {
+        "content": "# DeepSeek API Call\n\nThe DeepSeek API uses an API format compatible with OpenAI. By modifying the configuration, you can use the OpenAI SDK or softwares compatible with the OpenAI API to access the DeepSeek API.\n\nhttps://api-docs.deepseek.com/\n\n## Configuration Parameters\n\n| Parameter | Value |\n|-----------|--------|\n| base_url | https://api.deepseek.com |\n| api_key | https://platform.deepseek.com/api_keys |\n\n\n\n## Important Notes\n\n- To be compatible with OpenAI, you can also use `https://api.deepseek.com/v1` as the base_url. Note that the v1 here has NO relationship with the model's version.\n\n- The deepseek-chat model has been upgraded to DeepSeek-V3. The API remains unchanged. You can invoke DeepSeek-V3 by specifying `model='deepseek-chat'`.\n\n- deepseek-reasoner is the latest reasoning model, DeepSeek-R1, released by DeepSeek. You can invoke DeepSeek-R1 by specifying `model='deepseek-reasoner'`.",
+        "height": 600,
+        "width": 820,
+        "color": 7
+      },
+      "id": "b6794c7a-9753-44d9-91ee-c660b4793838",
+      "name": "Sticky Note12",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        700,
+        -20
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "model": "=deepseek-reasoner",
+        "options": {}
+      },
+      "id": "67ec5029-6856-4ce4-b49f-66a63d8e6fc2",
+      "name": "DeepSeek-R1 Reasoning",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        1200,
+        200
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "model": "=deepseek-chat",
+        "options": {}
+      },
+      "id": "84857dec-c2d3-4e7c-90c6-39d95929774f",
+      "name": "DeepSeek-V3 Chat",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        1360,
+        200
+      ],
+      "typeVersion": 1.1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Telegram Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Response Error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation": {
+      "main": [
+        [
+          {
+            "node": "Check User & Chat ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message Router": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Retrieve Long Term Memories",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        [
+          {
+            "node": "Error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek-V3 Chat": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check User & Chat ID": {
+      "main": [
+        [
+          {
+            "node": "Message Router",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Long Term Memories": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listen for Telegram Events": {
+      "main": [
+        [
+          {
+            "node": "Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Long Term Memories": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7160d9cb-4be1-48cd-95c9-0e9e98a2473d",
+  "meta": {
+    "instanceId": "1024bc9deb9fbb511412c16ed6d1cf658e4d725b1d6f5b599beade9941113e7a"
+  },
+  "id": "lF73WHttNEkKA5K9",
+  "tags": []
+}
