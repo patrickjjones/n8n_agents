@@ -1,0 +1,472 @@
+{
+  "name": "Test Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "2a4a4ca1-7615-4e5c-8e97-c7d2a3e9e2bd",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "position": [
+        700,
+        220
+      ],
+      "webhookId": "534ea1e8-0470-41b0-a690-b3f09cc348dd",
+      "typeVersion": 1.2,
+      "credentials": {
+        "telegramApi": {
+          "id": "EMYdSCihMCukxOcQ",
+          "name": "We Love Noz API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "sonar-pro",
+        "messages": {
+          "message": [
+            {
+              "content": "You are a trend research assistant for a creative video marketing workflow. Based on the user’s input (typically a request like “Create a 5-second Instagram video ad for my [product/brand]”), your job is to identify the most relevant and fresh trend (within the past 14 days) that could inspire the marketing angle or visual concept of the video.\n\nYour response will be passed directly into a Video Prompt Generator node, so it should highlight a trend that can be translated visually or conceptually into short-form video content.\n\nRequirements:\n\nSelect only the top, most relevant trend that connects clearly with the user’s topic or product.\n\nBriefly explain why this trend is compelling and how it could be used as a visual or narrative concept for a video ad.\n\nInclude the source URL of the trend for context.\n\nKeep your output concise, visual-oriented, and actionable for marketing. Avoid generic summaries. Prioritize consumer behavior shifts, viral aesthetics, cultural moments, audio trends, or platform-specific effects/styles that could boost engagement on platforms like Instagram or TikTok.\n\nInput Example:\n\"Create a 5-second Instagram ad for my perfume brand\"\n\nExpected Output Format:\n\nTrend Title:\n\nSummary & Video Angle Suggestion:\n\nSource URL:",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.message.text }}"
+            }
+          ]
+        },
+        "options": {},
+        "requestOptions": {}
+      },
+      "id": "6a947867-ae81-42bf-9e60-a5fcfd81a4e2",
+      "name": "Trend Research Agent",
+      "type": "n8n-nodes-base.perplexity",
+      "position": [
+        960,
+        220
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "perplexityApi": {
+          "id": "gzKUYss25vIdMeow",
+          "name": "Perplexity account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "chatgpt-4o-latest",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a creative video prompt generator for short-form ads (e.g., Instagram, TikTok). Based on:\n\nThe user's original brief (e.g., “Create a 5-second IG ad for my perfume brand”), and\n\nThe top marketing trend insight provided by the previous research node,\n\nYour task is to craft a concise, visually descriptive video generation prompt suitable for input into the Seedance API.\n\n🛑 Do not include any extra explanation, formatting, or commentary. Your entire output must be the exact prompt to pass into the video generator.\n\nThe prompt should:\n– Be under 100 words\n– Describe the visual elements, tone, and motion clearly\n– Reflect the product or brand type, and\n– Incorporate the marketing trend as the core concept or hook\n\nExample of your expected output format:\n\n“A close-up slow-motion shot of a glass perfume bottle as morning sunlight filters through mist. The background shows soft-focus wildflowers, matching the theme of natural beauty and calm. Overlay text: ‘Nature’s Elegance. Reinvented.’ Trend-inspired styling based on the ‘quiet luxury’ aesthetic. For Instagram. 5 seconds.”",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.choices[0].message.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb00a964-8ccd-45f7-af38-e8a2cd820eca",
+      "name": "Video Prompt Engineer",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        1180,
+        220
+      ],
+      "typeVersion": 1.8,
+      "credentials": {
+        "openAiApi": {
+          "id": "2rdkqvzVqstsA7yD",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.wavespeed.ai/api/v3/bytedance/seedance-v1-pro-i2v-1080p",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "duration",
+              "value": "5"
+            },
+            {
+              "name": "image"
+            },
+            {
+              "name": "prompt",
+              "value": "={{ $json.message.content }}"
+            },
+            {
+              "name": "seed",
+              "value": "-1"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "id": "3cfbd5cd-771f-4014-aeda-d842093a3f32",
+      "name": "Post Request - Wavespeed",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1580,
+        220
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "grJBBf82qkh8fFWK",
+          "name": "TripleWhale"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.data.outputs[0] }}",
+        "additionalFields": {}
+      },
+      "id": "7e90c733-000f-4673-b7f9-8a3ce0c42a88",
+      "name": "Send a text message",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        2540,
+        160
+      ],
+      "webhookId": "05add186-9fd7-4219-9b54-3e458fe6b0d6",
+      "typeVersion": 1.2,
+      "credentials": {
+        "telegramApi": {
+          "id": "EMYdSCihMCukxOcQ",
+          "name": "We Love Noz API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "9a0179e2-465e-467a-b750-19c592649d3b",
+              "operator": {
+                "name": "filter.operator.equals",
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.data.status }}",
+              "rightValue": "processing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "313fd7fa-30b0-4e7d-bc1c-2268d9de5a10",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        2220,
+        220
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "content": "Telegram Trigger",
+        "height": 380,
+        "width": 260
+      },
+      "id": "e23e2999-999c-4ee2-b982-b9df1355e9ed",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        620,
+        40
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "Perplexity Research Agent",
+        "height": 380,
+        "color": 3
+      },
+      "id": "a85059c1-b924-46af-8ffa-83f592103348",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        900,
+        40
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "Video Prompt Agent",
+        "height": 380,
+        "width": 300,
+        "color": 7
+      },
+      "id": "f53a8ced-c1c2-44e2-87b0-0ff0689871e2",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1160,
+        40
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "POST Request to Wavespeed",
+        "height": 380,
+        "width": 300,
+        "color": 2
+      },
+      "id": "db7620dd-1685-45af-8dfe-5b87aded4b9c",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1480,
+        40
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "GET Request Loop",
+        "height": 560,
+        "width": 640,
+        "color": 5
+      },
+      "id": "bdc67252-58a3-4128-a85f-99bc7d93cc38",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1800,
+        40
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "Telegram Output",
+        "height": 380,
+        "width": 280,
+        "color": 4
+      },
+      "id": "0d6fe54c-ca68-4cbc-8368-4e7dbd12b3f9",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2460,
+        40
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "🎬 Seedance Video Marketing AI Agent\nDescription:\nThis AI-powered marketing automation workflow takes a user prompt, researches trending topics, generates a compelling short-form video prompt, and sends it to the Seedance API via Wavespeed to create a ready-to-use video ad — all from a single Telegram message.\n\nBuilt for marketers, founders, and content creators who want to turn trend-based ideas into visual video content without touching a video editor.\n\n\n🤖 How It Works:\n📲 Telegram Trigger\n Kick off the workflow by messaging a short prompt (e.g., “Create a 5-second IG ad for my new perfume”) via Telegram.\n\n📈 Trend Research with Perplexity AI (Sonar Pro)\n An AI agent scans the latest 14-day trends and selects the top marketing angle based on the product/niche input.\n\n🧠 Video Prompt Engineer (ChatGPT-4o)\n Crafts a concise, visually rich video generation prompt — optimized for Seedance — based on the trend insight and product.\n\n🎥 Video Generation (Wavespeed + Seedance API)\n Sends the AI-generated prompt to Seedance via Wavespeed to generate a 5-second short-form video ad.\n\n🔁 Status Loop & Response\n The workflow checks if the video is ready. Once complete, it sends the final video output URL back to you in Telegram.\n\n🔧 Tools Used:\nTelegram Trigger & Response\n\nPerplexity AI (Sonar Pro)\n\nOpenAI GPT-4o\n\nSeedance API (via Wavespeed)\n\nn8n HTTP Request, Wait, and Loop nodes\n\n💡 Use Cases:\nAuto-generate TikTok/Instagram ads from current trends\n\nScale creative content generation with zero design work\n\nPlug into your marketing chatbot or campaign assistant\n\nUse trends as visual inspiration for ad creatives\n",
+        "height": 980,
+        "width": 680,
+        "color": 5
+      },
+      "id": "36454ab8-4b59-49e0-b5fc-36f788260561",
+      "name": "Sticky Note6",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -80,
+        40
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "b3a4fcdb-623f-4261-9717-127c57cfc86c",
+      "name": "Wait 30 sec",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        1860,
+        420
+      ],
+      "webhookId": "2927f5c0-0881-4c48-900b-0194aded5926",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "5c49ee60-0156-42a0-bb2b-29871f74931d",
+      "name": "Wait 30 Sec",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        1840,
+        220
+      ],
+      "webhookId": "40dd854a-29ad-41a1-adb1-3cd661dfd562",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "url": "=https://api.wavespeed.ai/api/v3/predictions/{{ $json.data.id }}/result",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "id": "05765012-022f-481c-a95a-b6bc53c423a5",
+      "name": "GET Request Wavespeed",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        2020,
+        220
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "grJBBf82qkh8fFWK",
+          "name": "TripleWhale"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Wait 30 sec",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30 Sec": {
+      "main": [
+        [
+          {
+            "node": "GET Request Wavespeed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30 sec": {
+      "main": [
+        [
+          {
+            "node": "GET Request Wavespeed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Trend Research Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trend Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Video Prompt Engineer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Request Wavespeed": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Prompt Engineer": {
+      "main": [
+        [
+          {
+            "node": "Post Request - Wavespeed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Request - Wavespeed": {
+      "main": [
+        [
+          {
+            "node": "Wait 30 Sec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3142031d-7652-45de-88a7-9d3a5bb2f9e0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c0fb75cf7fe95e3dad8680101bdc45549409c0f747d9491461d65b61bd6537e9"
+  },
+  "id": "SNyXPjK4O6LouBJy",
+  "tags": []
+}
