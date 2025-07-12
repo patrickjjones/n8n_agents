@@ -1,0 +1,1186 @@
+{
+  "name": "X_ai_agent",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Extract Hour (for scheduled tweets)\nconst hour = $input.first().json.Hour !== undefined\n  ? parseInt($input.first().json.Hour)\n  : null;\n\n// Full input payload\nconst input = $json;\n\n// Telegram Bot Token (keep secure in prod)\nconst botToken = '';\n\n// Get Telegram message object (if exists)\nlet caption = null;\nlet fileId = null;\n\ntry {\n  const tgMessage = $('Telegram Trigger').first().json.message;\n  caption = tgMessage?.caption || tgMessage?.text || null;\n\n  const photoArray = tgMessage?.photo || [];\n  fileId = photoArray.length > 0 ? photoArray.at(-1).file_id : null;\n\n} catch (err) {\n  // No Telegram Trigger — probably time-based\n}\n\n// Telegram image download path (used *after* AI for preview step)\nconst filePath = input.result?.file_path || null;\nconst imagePath = filePath\n  ? `https://api.telegram.org/file/bot${botToken}/${filePath}`\n  : null;\n\n// AM (relatable) / PM (tactical) context banks\nconst shortContexts = [\n  \"burnout from automation overload, workflow fails, ecom chaos\",\n  \"ad fatigue, n8n debugging rage, scaling pains\",\n  \"fitness vs founder grind, midnight workflow launches\",\n  \"manual tasks turned to agents, late night AI wins\"\n];\n\nconst longContexts = [\n  \"ecom stack breakdowns, automation frameworks, ai-driven funnels\",\n  \"replacing humans with workflows, scaling ops with zero team\",\n  \"agent-led product launches, feedback loops, margin math\",\n  \"the no-hire playbook, custom flows, 7-figure automation game\"\n];\n\n// Helper — Random picker\nconst pick = arr => arr[Math.floor(Math.random() * arr.length)];\n\n// ✅ Logic for Scheduled Tweets (Time-based)\nif (hour !== null) {\n  const isAM = hour < 13;\n  return [\n    {\n      json: {\n        format: isAM ? \"short\" : \"long\",\n        tone: isAM ? \"relatable\" : \"business\",\n        context: isAM ? pick(shortContexts) : pick(longContexts),\n        image_attached: false // Scheduled tweets don't include images\n      }\n    }\n  ];\n}\n\n// ✅ Logic for Manual Telegram Input (with or without image)\nif (caption) {\n  return [\n    {\n      json: {\n        prompt: caption.trim(),\n        image_attached: !!fileId,\n        file_id: fileId,\n        force_direct_answer: true\n      }\n    }\n  ];\n}\n\n// ❌ Fallback — no data\nreturn [{ json: {} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        -180
+      ],
+      "id": "72bb7636-6258-46cb-a152-cbbe0a3ee1f8",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 11
+            },
+            {
+              "triggerAtHour": 17
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -800,
+        -180
+      ],
+      "id": "1c4ad8a5-8719-47a3-beb0-a18adb69ac96",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "description": "Before you post the tweet, pause for a second and think like a 21-year-old founder on the edge of burnout but still swinging.\n\nAsk yourself:\n\t•\tWill this grow the account or just fill space?\n\t•\tIs it actually punchy, relatable, funny,  or tactical — or just safe?\n\t•\tWould I stop scrolling for this?\n\t•\tIs it something I’d say to my boys, not a PR manager?\n\t•\tCould this trigger a save, a like, or a “bro this is facts” or a laughing DM?\n\nIf yes:\nWrite a quick gut reason why it’ll slap.\n\nIf no:\nDrop one quick idea on how to make it hit harder next time.\n\nOnly log the thought internally.\nDon’t post it. Don’t change the tweet now.\nJust think, record, and move.\n\nGoal: Train your founder instinct over time — sharper every week.\n\nHard rules:\n\t•\tKeep it casual. Keep it short.\n\t•\tNo fluff. No overthinking.\n\t•\t2–8 lines. Like a mental note during a 2AM rebuild."
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1,
+      "position": [
+        600,
+        120
+      ],
+      "id": "7fbd8c02-1eea-4111-9aec-8b2fe8b1779a",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "tweetSession"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        380,
+        120
+      ],
+      "id": "d0a49fc1-48d1-4f08-aee9-1264e35cc61f",
+      "name": "Tweet Memory"
+    },
+    {
+      "parameters": {
+        "model": "google/gemini-2.0-flash-001",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        100
+      ],
+      "id": "b00e74a8-c8fa-479c-ba90-0f29372128ab",
+      "name": "Gemini 2.0 Flash",
+      "credentials": {
+        "openRouterApi": {
+          "id": "srSg7y6z8CLIxyxo",
+          "name": "OpenRouter - X Bot Brain Picker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}{{ $json.image_path }}{{ $json.format }}{{ $json.tone }}{{ $json.context }}{{ $('Telegram Trigger').item.json.callback_query.data }}",
+        "options": {
+          "systemMessage": "=# Overview\nYou are an AI agent responsible for selecting the most suitable large language model to handle a given user request. Choose only one model from the list below based strictly on each model’s strengths.  \n\n## Instructions\nAnalyze the user’s request and return the exact model name that best fits the task. Your response must contain only the model name. No explanations, no formatting, no extra text.\n\n## Available Models and Strengths\n- `google/gemini-2.0-flash-001`: best for fast, lightweight, conversational tasks or simple general-purpose queries  \n- `openai/gpt-4.1-mini`: best for tool calling creating calendar events or getting contact information\n- `anthropic/claude-3.7-sonnet`: best for writing high-quality content, research summaries, or tasks requiring clear, professional language  \n- `openai/o1`: best for deep logical reasoning and coding in a conversational way  \n\n### Output Format:\nReturn only one of the following strings:\n- google/gemini-2.0-flash-001  \n- openai/gpt-4.1-mini  \n- anthropic/claude-3.7-sonnet  \n- openai/o1"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -40,
+        -180
+      ],
+      "id": "e3dfb1ea-a112-4026-86f6-4405d11d34f5",
+      "name": "Model Selector"
+    },
+    {
+      "parameters": {
+        "model": "={{ $('Model Selector').item.json.output.trimEnd() }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        160,
+        120
+      ],
+      "id": "5313af19-60e6-47f7-a14a-44f28306415f",
+      "name": "Dynamic Brain",
+      "credentials": {
+        "openRouterApi": {
+          "id": "srSg7y6z8CLIxyxo",
+          "name": "OpenRouter - X Bot Brain Picker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Content Strategist\nFigures out what time of day it is and tells ai agent what content to produce\n",
+        "height": 300,
+        "width": 300,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -320
+      ],
+      "id": "4f4833de-f7a1-4efd-bba7-346e8ace5c7f",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Time Trigger\ntrigger 11am and 5pm to start the execution\n",
+        "height": 320,
+        "width": 300,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        -320
+      ],
+      "id": "f79f47ab-e7b1-4648-95dd-46f6ca57243a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 200,
+        "width": 200,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        100,
+        60
+      ],
+      "id": "77a2ba80-9c65-4126-b0bc-20131b0825a7",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 200,
+        "width": 200,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        60
+      ],
+      "id": "677a6fb4-0252-44cb-84b0-b7f738a7b29a",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## Model Selector Agent\ndecides which model to select, saving me MONEY",
+        "height": 300,
+        "width": 340,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -320
+      ],
+      "id": "7a506433-5216-47f6-a581-d11eebba51a2",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 200,
+        "width": 200,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        320,
+        60
+      ],
+      "id": "4c2fdc21-e7f6-497b-bc72-674167865b4c",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## X Bot Tweet Ai Agent\ngenerates the tweet for approval\n",
+        "height": 300,
+        "width": 340,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        280,
+        -320
+      ],
+      "id": "54306cd7-6bee-4552-b978-3d8bffac11d7",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Switch\ndepending on if the trigger has an image or not",
+        "height": 300,
+        "width": 200,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -320
+      ],
+      "id": "be343be4-86c9-4964-8ab8-f72a04e0f743",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Check Approval\nsends inline buttons \nfor use to choose from \n✅ 🔄 ❌\n\n",
+        "height": 300,
+        "width": 260,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        -300
+      ],
+      "id": "84a7e08e-8272-4232-a8c2-9bcc38e1ba5e",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "\n\n",
+        "height": 200,
+        "width": 200,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        540,
+        60
+      ],
+      "id": "22434dad-4d3b-4da5-9cf6-cfbf90fb03ff",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## X Post\n",
+        "height": 280,
+        "width": 200,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        460
+      ],
+      "id": "926068e0-0af9-441c-8c08-7fe6bc4922ab",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.tweet_text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        560
+      ],
+      "id": "2c3be11a-bd05-4182-95c8-74993dcb7a8d",
+      "name": "X",
+      "credentials": {
+        "twitterOAuth2Api": {
+          "id": "X3SncdKAl3oRyP6z",
+          "name": "Create X Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.callback_query.data }}",
+              "value2": "approve"
+            }
+          ]
+        }
+      },
+      "id": "384dd535-b806-4fae-bd05-c54cb448a9eb",
+      "name": "Check Approve",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -980,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Stop Workflow\n",
+        "height": 260,
+        "width": 200,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -780,
+        820
+      ],
+      "id": "c27c65a7-8678-4626-ac3e-14485b95b09e",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "content": "## Text + Check Call Back Trigger\nwhich button did they press and completes the correct task",
+        "height": 420,
+        "width": 520,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1680,
+        400
+      ],
+      "id": "152b96c6-b5dc-41e7-9f39-fa4d74968596",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Validations Stage\n\nchecks which button has been clicked",
+        "height": 600,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        420
+      ],
+      "id": "a26f1a35-e7ac-4bf9-9f65-de48288e4fe2",
+      "name": "Sticky Note13"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "fdf75f70-659e-4de4-88ee-330a8d736c4a",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1480,
+        540
+      ],
+      "webhookId": "109f3b3c-4d93-4640-90a7-59c3564fd494",
+      "credentials": {
+        "telegramApi": {
+          "id": "EMYdSCihMCukxOcQ",
+          "name": "Get your own Telegram Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.callback_query.data }}",
+              "value2": "regenerate"
+            }
+          ]
+        }
+      },
+      "id": "7c42b8b5-be87-48a7-b8dd-ff63e23eebf2",
+      "name": "Check Regenerate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -980,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.callback_query.data }}",
+              "value2": "stop"
+            }
+          ]
+        }
+      },
+      "id": "7587ef4a-6195-42c9-bbca-5909fe315b9b",
+      "name": "Check Stop",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -980,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "7049994855",
+        "text": "✅ Tweet Posted ✅",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        80,
+        560
+      ],
+      "id": "13401e0c-1e3f-44e9-9b5a-fb3a3a15e55f",
+      "name": "Confirmation Response",
+      "webhookId": "06815766-3beb-46de-9e6f-fa5e8ad56ae4",
+      "retryOnFail": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "EMYdSCihMCukxOcQ",
+          "name": "Get your own Telegram Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "❌ Work Flow Stopped ❌",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -740,
+        880
+      ],
+      "id": "dc5f070b-14e4-4ecb-9ef4-662082b0a9ad",
+      "name": "Work Flow Stopped Response",
+      "webhookId": "06815766-3beb-46de-9e6f-fa5e8ad56ae4",
+      "retryOnFail": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "EMYdSCihMCukxOcQ",
+          "name": "Get your own Telegram Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        -700,
+        540
+      ],
+      "id": "4ab1ff76-98ab-49c9-bc0e-77c1832e2bd3",
+      "name": "Chat Memory Manager"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "tweetSession"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -600,
+        680
+      ],
+      "id": "5f51d408-fbc8-4c78-ae11-b77fb0bb15f2",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "content": "## Confirmation Message\n",
+        "height": 280,
+        "width": 220,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        20,
+        460
+      ],
+      "id": "d08d0292-cdec-4df8-87bc-d966945d3ba1",
+      "name": "Sticky Note14"
+    },
+    {
+      "parameters": {
+        "content": "## Gets Last tweet\n",
+        "height": 340,
+        "width": 560,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -780,
+        460
+      ],
+      "id": "21b5f1b8-d170-4307-a126-bf2f14f33a0a",
+      "name": "Sticky Note15"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/file/bot7500474725:AAFdhBuYr4Kzd4esx-TPoJDKq5qa_Pe6-7Q/{{ $('Get Image').first().json.result.file_path }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -260
+      ],
+      "id": "e2d59a4c-f099-4286-80d6-e7f481b947db",
+      "name": "Download Image",
+      "notesInFlow": false,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $('Telegram Trigger').item.json.message.photo[3].file_id }}"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -460,
+        160
+      ],
+      "id": "2c11e64b-4155-4352-8712-c6811728e998",
+      "name": "Get Image",
+      "webhookId": "d46a3850-d152-428b-8f5a-3de33fd9a477",
+      "credentials": {
+        "telegramApi": {
+          "id": "EMYdSCihMCukxOcQ",
+          "name": "Get your own Telegram Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "get your https request to send to telegram",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"chat_id\": \"7049994855\",\n  \"text\": \"Approve this tweet?\",\n  \"reply_markup\": {\n    \"inline_keyboard\": [\n      [\n        {\n          \"text\": \"✅\",\n          \"callback_data\": \"approve\"\n        },\n        {\n          \"text\": \"🔄\",\n          \"callback_data\": \"regenerate\"\n        },\n        {\n          \"text\": \"❌\",\n          \"callback_data\": \"stop\"\n        }\n      ]\n    ]\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1420,
+        -180
+      ],
+      "id": "fe1e0701-69a7-41d4-ba70-4442f05eb8bd",
+      "name": "Inline Approval"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Code').item.json.prompt }}\n{{ $('Code').item.json.file_id }}\n{{ $('Code').item.json.format }}\n{{ $('Code').item.json.tone }}\n{{ $('Code').item.json.context }}\n{{ $('Telegram Trigger').item.json.callback_query.data }}\n⸻\n\nYou are the unfiltered Twitter voice of a 21-year-old slightly delusional South African ecom founder obsessed with automating everything.\n\nYou’re not just building stores — you’re building systems.\nTweeting like it’s your second brain and automating like you’re allergic to manual work.\n\nThink: caffeine-fueled gym rat meets founder madness meets workflow automation wizard.\n\nYou use n8n every day — not because it’s trendy, but because you’re automating your entire ecom brand with zero human ops.\nThis account is your war journal — turning agents, flows, and AI chaos into real revenue.\n\n⸻\n\nWhat You’re Posting:\n\nFrom Schedual Trigger\n• AM = founder chaos (burnout, janky flows, dumb wins, n8n rage)\n• PM = tactical (real use-cases, automation breakdowns, scale systems)\n\n• Telegram = instant reaction to prompts — tactical, funny, unhinged — do as told.\n\n⸻\n\nTweet Output Format:\n\n• One sentence per line\n• Leave a blank line between each sentence\n• Max 4 lines if format = short\n• 5–10 lines if format = long\n• No “Format:” or “Tone:” in output\n• If a prompt is provided, use it directly\n• If context is present, use it for inspiration\n• If both exist, combine them naturally\n• Do not include the image URL in the tweet — just make sure the tweet matches the vibe of the image if one exists\n\n⸻\n\nStyle Guide:\n\n• No emojis\n• No hashtags\n• No pitch-deck energy\n• No polished SaaS tone\n• Say what most won’t\n• Raw, messy, fast\n• Like you’re tweeting on 3 hours of sleep and 9 n8n tabs open\n• Be useful or be unhinged — never be boring\n\n⸻\n\nTweet Structures to Pull From:\n\n• 1-liner punches\n• 2–4 bullet drops\n• 3-line rants\n• Founder chaos bars\n• “Why I built this” breakdowns\n• Flip-the-script contradictions\n• Savage truths with tactical value\n\n⸻\n\nYour Role:\n\nYou’re 21.\nAutomating your ops.\nScaling lean.\nThinking in workflows, agents, and long-term exits.\nTweet like your future depends on it — because it does.\n\n⸻\n\nReturn only the final tweet text.\nNo metadata.\nNo labels.\nNo markdown.\nNo fluff.\nOne sentence per line.\nBlank line between lines.\nJust hit.",
+        "options": {
+          "systemMessage": "="
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        320,
+        -180
+      ],
+      "id": "c699ae5d-8417-417e-bfcc-b3139c21418a",
+      "name": "X Bot"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f59de13c-8ef4-4528-984d-a5a086831d78",
+                    "leftValue": "={{ $('Code').item.json.image_attached }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Code').item.json.context }} OR {{ $('Code').item.json.prompt }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "45af1f18-abb4-41ab-bb50-ed7f03674f45"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        680,
+        -180
+      ],
+      "id": "b2fbddac-bfe5-4687-b94f-5a7d6cc9bd77",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "7049994855",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "={{ $json.output }}",
+          "fileName": "=image.jpg"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1140,
+        -260
+      ],
+      "id": "a233c911-1a7e-47f5-b7a6-bac3ae36dcd0",
+      "name": "Preview Photo",
+      "webhookId": "06815766-3beb-46de-9e6f-fa5e8ad56ae4",
+      "retryOnFail": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "EMYdSCihMCukxOcQ",
+          "name": "Get your own Telegram Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7049994855",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1040,
+        -80
+      ],
+      "id": "0876ad29-0f39-4040-87e5-baa7d19f7d6f",
+      "name": "Preview Chat",
+      "webhookId": "06815766-3beb-46de-9e6f-fa5e8ad56ae4",
+      "retryOnFail": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "EMYdSCihMCukxOcQ",
+          "name": "Get your own Telegram Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Preview Message Send\n\npreview send with image or without",
+        "height": 480,
+        "width": 460,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        860,
+        -400
+      ],
+      "id": "84075e95-b731-4343-8f87-d930cb94e3f8",
+      "name": "Sticky Note16"
+    },
+    {
+      "parameters": {
+        "content": "## IF Message OR Text\n\n\n",
+        "height": 260,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        80
+      ],
+      "id": "9d13fa9b-e725-4d3e-9571-11b262739c74",
+      "name": "Sticky Note17"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "46f5ead3-4b23-4eba-aeab-cf61e3bd0d79",
+              "leftValue": "={{ $json.message.caption }}{{ $json.message.photo }}{{ $json.message }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -980,
+        180
+      ],
+      "id": "22aeb137-094f-4896-a760-8d12aaff1efe",
+      "name": "Caption OR Photo"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "70d25186-8653-45ae-8e29-911258869797",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -720,
+        160
+      ],
+      "id": "2c67f38b-58e4-4327-902b-6926f0a37ed0",
+      "name": "Text OR Photo"
+    },
+    {
+      "parameters": {
+        "content": "## IF Text \n\n\n",
+        "height": 260,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -780,
+        80
+      ],
+      "id": "1ad668c7-34f6-4831-907f-df9cd951b536",
+      "name": "Sticky Note18"
+    },
+    {
+      "parameters": {
+        "content": "## Get Image\n \n\n\n",
+        "height": 260,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        80
+      ],
+      "id": "8b202db8-a094-4e89-a943-da28634f26cf",
+      "name": "Sticky Note19"
+    },
+    {
+      "parameters": {
+        "jsCode": "const messages = $json.messages;\nconst lastMessage = messages[messages.length - 1];\n\nreturn [\n  {\n    json: {\n      tweet_text: lastMessage.ai\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        560
+      ],
+      "id": "864bdc18-107b-47f9-a718-0b9f8b53ebfe",
+      "name": "Gets Last Message"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Model Selector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "X Bot",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tweet Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "X Bot",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini 2.0 Flash": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Model Selector",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model Selector": {
+      "main": [
+        [
+          {
+            "node": "X Bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dynamic Brain": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "X Bot",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Approve": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Approve",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Regenerate",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Stop",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Caption OR Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Regenerate": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Stop": {
+      "main": [
+        [
+          {
+            "node": "Work Flow Stopped Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "X": {
+      "main": [
+        [
+          {
+            "node": "Confirmation Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory Manager": {
+      "main": [
+        [
+          {
+            "node": "Gets Last Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Preview Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Image": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "X Bot": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preview Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preview Photo": {
+      "main": [
+        [
+          {
+            "node": "Inline Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preview Chat": {
+      "main": [
+        [
+          {
+            "node": "Inline Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Caption OR Photo": {
+      "main": [
+        [
+          {
+            "node": "Text OR Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text OR Photo": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gets Last Message": {
+      "main": [
+        [
+          {
+            "node": "X",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "634f3404-e7f9-444c-8e40-25fee6291fab",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c0fb75cf7fe95e3dad8680101bdc45549409c0f747d9491461d65b61bd6537e9"
+  },
+  "id": "CN3T0BVfnlyO2FQR",
+  "tags": []
+}
