@@ -1,6 +1,6 @@
-✅ Workflow Overview: X AI Agent
+✅ *Workflow Overview: X AI Agent
 
-This agent:
+**This agent:
 	•	Posts tweets automatically at scheduled hours (AM/PM).
 	•	Uses Telegram to approve, reject, or regenerate tweets.
 	•	Selects the best LLM dynamically to reduce cost + boost speed.
@@ -9,7 +9,7 @@ This agent:
 
 ⸻
 
-🧠 Key Modules & Logic
+🧠 **Key Modules & Logic
 
 1. Triggers
 	•	Schedule Trigger
