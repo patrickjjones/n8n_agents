@@ -1,4 +1,4 @@
-✅ *Workflow Overview: X AI Agent
+✅ Workflow Overview: X AI Agent
 
 **This agent:
 	•	Posts tweets automatically at scheduled hours (AM/PM).
@@ -9,7 +9,7 @@
 
 ⸻
 
-🧠 **Key Modules & Logic
+🧠 Key Modules & Logic
 
 1. Triggers
 	•	Schedule Trigger
