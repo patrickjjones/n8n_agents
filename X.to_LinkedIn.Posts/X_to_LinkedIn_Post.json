@@ -1,0 +1,1521 @@
+{
+  "name": "X to LinkedIn Post",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Process scraped posts\nconst posts = $input.all() || [];\n\nif (posts.length === 0) {\n  return [{ json: { hasNewPosts: false, message: 'No new posts found' } }];\n}\n\n// Get the first item's data array\nconst postsData = posts[0].json.data || [];\n\n// Process each post\nconst processedPosts = postsData.map(post => {\n  // Extract media URLs - they're already in the media array\n  const mediaUrls = post.media || [];\n  \n  // Create post title from first 50 chars of text\n  const postTitle = post.text ? post.text.substring(0, 50).replace(/[^a-zA-Z0-9 ]/g, '').trim() : `Post ${post.id}`;\n\n  return {\n    json: {\n      id: post.id,\n      postTitle,\n      text: post.text || '',\n      createdAt: post.createdAt,\n      url: post.url,\n      media: mediaUrls, // Changed from mediaUrls to media to match Split node\n      hashtags: post.hashtags || [],\n      engagement: {\n        likes: post.likeCount || 0,\n        retweets: post.retweetCount || 0,\n        replies: post.replyCount || 0,\n        quotes: post.quoteCount || 0\n      },\n      author: {\n        username: post.author?.userName || 'NoahEpstein_',\n        displayName: post.author?.name || 'Noah Epstein'\n      }\n    }\n  };\n});\n\nconsole.log(`Found ${processedPosts.length} posts from last 24 hours`);\n\n// Sort by most recent first\nprocessedPosts.sort((a, b) => \n  new Date(b.json.createdAt).getTime() - new Date(a.json.createdAt).getTime()\n);\n\n// Return only the most recent post\nreturn [processedPosts[0]];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        -620
+      ],
+      "id": "063e0ead-b167-4e61-ac4f-d661b0d6c5f9",
+      "name": "Process Posts & Update Time"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $json.output.Healines }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1pTFCIGsx-ZJpGpW6STTH7IBcFUB_PJqb",
+          "mode": "list",
+          "cachedResultName": "LinkedIn",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1pTFCIGsx-ZJpGpW6STTH7IBcFUB_PJqb"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        -260
+      ],
+      "id": "7b183ee4-0746-493b-9eb2-1bf1e5e0d93c",
+      "name": "Create Post Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "jvnViXGdymdhq6gu",
+          "name": "Google Drive (Noahblend)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "=media-{{ $itemIndex }}.{{ $json.url.split('.').pop().split('?')[0] }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Create Post Folder').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2220,
+        -300
+      ],
+      "id": "5d692e45-58f5-49d9-9fa0-88e815afdea0",
+      "name": "Upload Media to Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "jvnViXGdymdhq6gu",
+          "name": "Google Drive (Noahblend)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Twitter Post:\n{{ $('Get Scraped Tweets2').item.json.data[0].text }}\n\nEngagement: {{ $('Get Scraped Tweets2').item.json.data[0].likeCount }} likes, {{ $('Get Scraped Tweets2').item.json.data[0].retweetCount }} Retweets, \nURL: {{ $('Get Scraped Tweets2').item.json.data[0].author.url }}",
+        "options": {
+          "systemMessage": "You are a viral LinkedIn content strategist who transforms Twitter posts into high-engagement LinkedIn content using proven viral frameworks.\n\n**Your Task:**\nConvert the Twitter post into viral LinkedIn content following these EXACT steps:\n\n**1. VIRAL HOOK (First 2 lines - CRITICAL)**\n- Start with a bold statement, surprising fact, or emotional moment\n- Make readers NEED to click \"see more\"\n- Examples: \"I just discovered why 90% of agencies are overcharging...\" or \"Yesterday changed everything about how I view AI automation...\"\n\n**2. STORYTELLING STRUCTURE**\n- Transform the tweet into a personal story or experience\n- Use \"I\", \"You\", or \"We\" to create connection\n- Share a transformation: Problem → Discovery → Solution → Result\n\n**3. FORMATTING FOR VIRALITY**\n- Use 1-3 line paragraphs MAX\n- Add line breaks between EVERY paragraph\n- Use these patterns:\n  • Single powerful sentences.\n  • Questions that make readers think?\n  • Bold statements that challenge norms.\n\n**4. EMOTIONAL TRIGGERS**\n- Inspire action or transformation\n- Challenge conventional thinking  \n- Share vulnerable moments or mistakes\n- Celebrate wins or breakthroughs\n\n**5. VALUE DELIVERY**\n- Extract 3-5 actionable insights\n- Make complex ideas simple\n- Give readers something they can use TODAY\n\n**6. ENGAGEMENT ELEMENTS**\n- Ask a compelling question mid-post\n- Use \"you\" to speak directly to readers\n- Include a specific CTA before the ending\n\n**7. VIRAL HASHTAGS**\n- Include 3-5 relevant hashtags like:\n  #AI #Automation #LinkedInTips #Growth #Innovation\n\n**MANDATORY ENDING (ALWAYS include exactly as shown):**\n\n💡 Show this post some love by engaging with it!\n\n🚀 Want more AI automation resources and exclusive workflows? Join our community:\nhttps://www.skool.com/agent-n\n\n**TONE REQUIREMENTS:**\n- Authentic & Human: Show real personality\n- Inspirational: Focus on growth and possibility\n- Professional yet Approachable: No jargon\n- Action-Oriented: Give clear next steps\n\n**Output Format:**\nProvide ONLY the LinkedIn post content, formatted exactly as it should appear, including all line breaks, hashtags, and the mandatory ending."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        1860,
+        -100
+      ],
+      "id": "a2aef3c7-8305-40fd-abae-c277a221caca",
+      "name": "LinkedIn Content AI"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "post_data",
+              "name": "postData",
+              "value": "={{ $('Process Posts & Update Time').item.json }}",
+              "type": "object"
+            },
+            {
+              "id": "folder_id",
+              "name": "folderId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "folder_link",
+              "name": "folderLink",
+              "value": "={{ $json.webViewLink }}",
+              "type": "string"
+            },
+            {
+              "id": "media_files",
+              "name": "mediaFiles",
+              "value": "={{ $items('Upload Media to Folder').map(item => item.json.webViewLink).join(',') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2420,
+        -100
+      ],
+      "id": "abed1345-c6d2-428b-9c20-74cd10ef615e",
+      "name": "Aggregate Post Data"
+    },
+    {
+      "parameters": {
+        "folderId": "={{ $('Create Post Folder').item.json.id }}",
+        "title": "LinkedIn Post Content"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        2660,
+        -480
+      ],
+      "id": "4688e852-655e-4e46-a302-d3f7b88a3a0e",
+      "name": "Create LinkedIn Doc",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "cXmjd0V9oD83jUmA",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 📱 Telegram Approval\n\nSends draft to Telegram for review with approve/edit/cancel options.",
+        "height": 700,
+        "width": 840,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        320
+      ],
+      "id": "4d08c2af-a1be-4733-83bd-03dc37be5a3f",
+      "name": "Telegram Approval Note"
+    },
+    {
+      "parameters": {
+        "chatId": "7049994855",
+        "text": "=📝 **New LinkedIn Post Draft**\n\n{{ $('LinkedIn Content AI').item.json.output }}\n\n📁 [View in Google Drive](https://drive.google.com/drive/folders/{{ $('Create Post Folder').item.json.id }})\n🐦 [Original Tweet]({{ $('Get Scraped Tweets2').item.json.data[0].url }})",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Approve",
+                    "additionalFields": {
+                      "callback_data": "Approved"
+                    }
+                  },
+                  {
+                    "text": "❌ Cancel",
+                    "additionalFields": {
+                      "callback_data": "Cancel"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3160,
+        -320
+      ],
+      "id": "903db14a-cdb3-44b6-a247-df30d97f861d",
+      "name": "Send for Approval",
+      "webhookId": "5d1207df-71fc-4061-a07a-e3527d4b1d5c",
+      "credentials": {
+        "telegramApi": {
+          "id": "19UDgjkzawcl04p4",
+          "name": "Telegram Twitter Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        600
+      ],
+      "webhookId": "linkedin-approval-webhook",
+      "id": "b2876754-2066-4c88-959f-04677aabe303",
+      "name": "Telegram Response Trigger",
+      "credentials": {
+        "telegramApi": {
+          "id": "19UDgjkzawcl04p4",
+          "name": "Telegram Twitter Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract post ID from callback data or find from context\nconst callbackData = $json.callback_query?.data || '';\nconst postId = callbackData.split('_')[1] || '';\n\n// Get stored post data from workflow static data\nconst storedPosts = $getWorkflowStaticData('posts') || {};\nconst postData = storedPosts[postId];\n\nif (!postData) {\n  throw new Error('Post data not found for ID: ' + postId);\n}\n\nreturn {\n  json: {\n    ...postData,\n    approved: true\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        400
+      ],
+      "id": "fd34a1c0-c2e4-4115-aefc-443dd5e7ce9a",
+      "name": "Get Approved Post"
+    },
+    {
+      "parameters": {
+        "chatId": "7049994855",
+        "text": "❌ LinkedIn post cancelled",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        840,
+        600
+      ],
+      "id": "0dea0e79-44dc-4d23-8e98-38c730137b6f",
+      "name": "Cancel Response",
+      "webhookId": "6aeefe28-01c9-40a2-844e-8b6cba299b08",
+      "credentials": {
+        "telegramApi": {
+          "id": "19UDgjkzawcl04p4",
+          "name": "Telegram Twitter Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        840,
+        800
+      ],
+      "id": "7f67aff6-f1f1-4722-87ff-faa2f0f13561",
+      "name": "Update LinkedIn Doc",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "cXmjd0V9oD83jUmA",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7049994855",
+        "text": "=✏️ Post updated! Review the new version:\n\n{{ $json.message.text }}\n\n📁 [View in Google Drive]({{ $json.folderLink }})",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Approve",
+                    "additionalFields": {}
+                  },
+                  {
+                    "text": "❌ Cancel",
+                    "additionalFields": {}
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1060,
+        800
+      ],
+      "id": "4ab377a3-9d96-4758-a88e-1816233e3ccb",
+      "name": "Resend for Approval",
+      "webhookId": "c90de8ec-ca02-4c06-ad5e-6145e961871c",
+      "credentials": {
+        "telegramApi": {
+          "id": "19UDgjkzawcl04p4",
+          "name": "Telegram Twitter Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 📤 LinkedIn Posting\n\nPosts approved content to LinkedIn using the API.",
+        "height": 300,
+        "width": 420,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        260
+      ],
+      "id": "35303051-81fa-409a-bd12-f7588327c25a",
+      "name": "LinkedIn Posting Note"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"author\": \"urn:li:person:YOUR_LINKEDIN_USER_ID\",\n  \"lifecycleState\": \"PUBLISHED\",\n  \"specificContent\": {\n    \"com.linkedin.ugc.ShareContent\": {\n      \"shareCommentary\": {\n        \"text\": \"{{ $json.content }}\"\n      },\n      \"shareMediaCategory\": \"NONE\"\n    }\n  },\n  \"visibility\": {\n    \"com.linkedin.ugc.MemberNetworkVisibility\": \"PUBLIC\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        400
+      ],
+      "id": "b6f2fc9e-00e7-4d03-a962-c8a38205b482",
+      "name": "Post to LinkedIn",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "grJBBf82qkh8fFWK",
+          "name": "TripleWhale"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7049994855",
+        "text": "✅ Posted to LinkedIn successfully!",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        400
+      ],
+      "id": "ea083794-ce4c-4d01-912d-cc2f26f189c0",
+      "name": "Success Message",
+      "webhookId": "689e9914-32f5-4827-8709-1c1e5a14db97",
+      "credentials": {
+        "telegramApi": {
+          "id": "19UDgjkzawcl04p4",
+          "name": "Telegram Twitter Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        -620
+      ],
+      "id": "831a7058-c56b-4eb5-94b5-50797fd0e7b3",
+      "name": "Schedule Trigger2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Always fetch posts from the last 24 hours\nconst endTime = new Date();\nconst startTime = new Date();\nstartTime.setHours(startTime.getHours() - 24);\n\nconsole.log('Fetching posts from:', startTime.toISOString());\nconsole.log('Fetching posts until:', endTime.toISOString());\n\nreturn {\n  json: {\n    startTime: startTime.toISOString(),\n    endTime: endTime.toISOString(),\n    isFirstRun: false\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -620
+      ],
+      "id": "fcf4b232-dbee-4e2f-af24-fc287460f6fd",
+      "name": "Get Last Run Time1"
+    },
+    {
+      "parameters": {
+        "resource": "Actors",
+        "operation": "Run actor",
+        "actorId": {
+          "__rl": true,
+          "value": "61RPP7dywgiy0JPD0",
+          "mode": "list",
+          "cachedResultName": "tweet-scraper"
+        },
+        "build": "",
+        "webhooks": "",
+        "useCustomBody": true,
+        "customBody": "={\n    \"author\": \"NoahEpstein_\",\n    \"customMapFunction\": \"(object) => { return {...object} }\",\n    \"start\": \"{{ $json.startTime }}\",\n    \"end\": \"{{ $json.endTime }}\",\n    \"includeSearchTerms\": false,\n    \"isRetweet\": false,\n    \"maxItems\": 20,\n    \"minimumFavorites\": 5,\n    \"minimumReplies\": 5,\n    \"minimumRetweets\": 5,\n    \"onlyImage\": false,\n    \"onlyQuote\": false,\n    \"onlyTwitterBlue\": false,\n    \"onlyVerifiedUsers\": false,\n    \"onlyVideo\": false,\n    \"sort\": \"Latest\",\n    \"tweetLanguage\": \"en\"\n}",
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        1160,
+        -620
+      ],
+      "id": "5013ac8b-6fc1-4916-9a0b-a7cc6a7b91e0",
+      "name": "Apify Twitter Scraper1",
+      "credentials": {
+        "apifyApi": {
+          "id": "9zn2M8TmA5zEWa5g",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "Datasets",
+        "operation": "Get items",
+        "datasetId": "={{ $json.data.defaultDatasetId }}",
+        "fields": "id,text,createdAt,url,likeCount,retweetCount,replyCount,quoteCount,photos,videos,media,hashtags,userMentions,author,conversationId,inReplyToStatusId,quotedStatus,retweetedStatus",
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        -620
+      ],
+      "id": "5155d281-b26e-4b91-a9c6-02ce3e89b45d",
+      "name": "Get Scraped Tweets2",
+      "credentials": {
+        "apifyApi": {
+          "id": "9zn2M8TmA5zEWa5g",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "=extract the first few words from the first sentence of the text \n{{ $json.text }}\n",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "Healines",
+              "description": "headlines of text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        -260
+      ],
+      "id": "b97ad32e-5089-4846-b697-f2b65ac81351",
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        820,
+        -180
+      ],
+      "id": "04e8e925-9e60-4441-93cc-0cc477fd46ac",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "srSg7y6z8CLIxyxo",
+          "name": "OpenRouter - X Bot Brain Picker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "media",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        -300
+      ],
+      "id": "324b025c-bfa3-4461-95d1-0ba8d86042a1",
+      "name": "Split Media URLs2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "folderId",
+              "name": "folderId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "media",
+              "name": "media",
+              "value": "={{ $('Process Posts & Update Time').item.json.media }}",
+              "type": "array"
+            },
+            {
+              "id": "postData",
+              "name": "postData",
+              "value": "={{ $('Process Posts & Update Time').item.json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1760,
+        -400
+      ],
+      "id": "f504d88c-8db1-4980-b0f8-8c2c163c67e6",
+      "name": "Prepare Media Data"
+    },
+    {
+      "parameters": {
+        "url": "={{ typeof $json === 'string' ? $json : $json.media }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2060,
+        -400
+      ],
+      "id": "e325ae51-2c95-4998-86e9-199b74b81b48",
+      "name": "Download Media2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-20250514",
+          "cachedResultName": "Claude 4 Sonnet"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1880,
+        20
+      ],
+      "id": "2f1b3ae6-3692-4a73-b724-75389ef4121b",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "RUW9B3IT8szl1T2i",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "simple": false,
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "locationChoice": "location",
+              "text": "={{ $('LinkedIn Content AI').item.json.output }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        -300
+      ],
+      "id": "15078f97-c4fe-4c38-a88e-43ba4998d4a3",
+      "name": "Google Docs",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "cXmjd0V9oD83jUmA",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "Approved",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "2c906e8a-fed6-41b3-a018-ab7780f50dd7"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7e8aff3e-7632-4218-b878-b820e1622ca7",
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "Cancel",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "941a8722-539e-424a-bcb8-376442d1e6d0",
+                    "leftValue": "={{ $json.message }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        480,
+        600
+      ],
+      "id": "6c665a62-f3f7-431e-872a-1d9896a4f3ee",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "content": "# 🚀 Twitter → LinkedIn Automation Pipeline\n\n**Transform your best tweets into viral LinkedIn posts with smart AI and human approval**\n\n## How It Works:\n\n**📱 Step 1: Capture Your Tweet**\n• Monitors your Twitter account every 10 minutes\n• Grabs your latest tweet (text + images)\n• Only processes posts from the last 24 hours\n• Filters for posts with 5+ likes/retweets/replies\n\n**🧠 Step 2: AI Transformation**\n• Extracts key message from your tweet\n• Rewrites for LinkedIn's professional audience\n• Adds viral hooks and storytelling elements\n• Includes your Skool community link automatically\n\n**📁 Step 3: Organized Storage**\n• Creates a dedicated Google Drive folder\n• Saves LinkedIn draft as Google Doc\n• Downloads and stores all media files\n• Everything in one place for easy access\n\n**✅ Step 4: Your Approval**\n• Sends draft to your Telegram\n• Preview the LinkedIn version\n• ✅ Approve → Posts to LinkedIn\n• ❌ Cancel → Stops everything\n• ✏️ Edit → Reply with changes\n\n**📊 Step 5: Go Live**\n• Posts approved content to LinkedIn\n• Confirms success via Telegram\n• Ready for the next viral post!",
+        "height": 800,
+        "width": 760,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -880
+      ],
+      "id": "bb731e2c-5d7e-4023-adca-97fec4d0bad8",
+      "name": "Workflow Overview"
+    },
+    {
+      "parameters": {
+        "content": "## 🕐 Schedule Trigger\n\n**Runs every 1 HOUR**\n\nChange the interval based on how often you tweet:\n• Heavy tweeter: 5 minutes\n• Regular: 10 minutes\n• Occasional: 30 minutes\n\nOr replace with manual trigger to run on-demand!",
+        "height": 420,
+        "width": 360,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        540,
+        -880
+      ],
+      "id": "1526ffd6-88cd-49f7-b64d-83311cb8125b",
+      "name": "Schedule Note"
+    },
+    {
+      "parameters": {
+        "content": "## 🔍 Tweet Filter\n\n**Quality Control**\n\nOnly processes tweets with:\n• 5+ likes\n• 5+ retweets\n• 5+ replies\n\nAdjust these numbers in Apify node to match your engagement levels!",
+        "height": 420,
+        "width": 600,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        920,
+        -880
+      ],
+      "id": "83258eb7-4fcc-40f9-8d23-637ea4eaa59c",
+      "name": "Filter Note"
+    },
+    {
+      "parameters": {
+        "content": "## 🤖 AI Magic\n\n**Viral LinkedIn Formula**\n\n1. **Hook**: Grabs attention in first 2 lines\n2. **Story**: Transforms tweet into narrative\n3. **Value**: Adds actionable insights\n4. **CTA**: Drives engagement\n5. **Link**: Always adds Skool community\n\nCustomize the prompt to match your brand voice!",
+        "height": 300,
+        "width": 760,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        -120
+      ],
+      "id": "2153bb3e-8d9d-457a-8947-99ce03a269f8",
+      "name": "AI Transformation Note"
+    },
+    {
+      "parameters": {
+        "content": "## 📱 Telegram Setup\n\n**Your Control Center**\n\n1. **Chat ID**: 7049994855\n   (Replace with your Telegram chat ID)\n\n2. **Bot Token**: Already configured\n\n3. **Actions**:\n   • ✅ = Post to LinkedIn\n   • ❌ = Cancel workflow\n   • Reply = Edit the post\n\nTip: Create a dedicated Telegram channel for these approvals!",
+        "height": 580,
+        "width": 320,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3060,
+        -720
+      ],
+      "id": "1fe24980-02e9-4fdf-8369-c98acbf56ef3",
+      "name": "Telegram Setup Note"
+    },
+    {
+      "parameters": {
+        "content": "## ⚙️ Initial Setup\n\n**Before First Run:**\n\n1. **Twitter Username**\n   Edit in Apify node → \"NoahEpstein_\"\n\n2. **Google Drive Folder**\n   Create \"LinkedIn\" folder\n   Copy folder ID from URL\n\n3. **Telegram Chat ID**\n   Get from @userinfobot\n   Update in Send for Approval node\n\n4. **LinkedIn API** (Coming Soon)\n   Currently saves to Google Docs\n   Manual posting required",
+        "height": 420,
+        "width": 360,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -60
+      ],
+      "id": "8f67ec37-f815-4567-9ad1-6b9420dfef68",
+      "name": "Setup Instructions"
+    },
+    {
+      "parameters": {
+        "content": "## 💡 Pro Tips\n\n**Maximize Your Results:**\n\n• **Best Times**: Tweet 1-2 hours before LinkedIn peak (10-11 AM)\n\n• **Media**: Always include images - they get 2x engagement\n\n• **Edits**: Keep tweaking until it feels authentic to YOU\n\n• **Timing**: Post to LinkedIn within 24h for relevance\n\n• **Testing**: Run manually first to ensure everything works",
+        "height": 360,
+        "width": 380
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        120,
+        -460
+      ],
+      "id": "b0239ed5-ad45-401c-a95a-8d57cc4269fd",
+      "name": "Pro Tips"
+    },
+    {
+      "parameters": {
+        "content": "## 🚨 Common Issues\n\n**Quick Fixes:**\n\n• **No tweets found**: Lower the engagement filters\n• **Media not downloading**: Check Twitter media URLs\n• **Telegram not working**: Verify chat ID and bot token\n• **Google Drive errors**: Check folder permissions\n• **AI too generic**: Customize the prompt more",
+        "height": 300,
+        "width": 380,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        140,
+        -60
+      ],
+      "id": "a6a1a0b1-aae2-4f44-a897-35ccfc928735",
+      "name": "Troubleshooting"
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Data Processing\n\n**Smart Filtering**\n\n• Processes only the LATEST tweet\n• Extracts media URLs automatically\n• Creates readable post titles\n• Tracks engagement metrics\n\nThe code sorts by newest first and picks the top post!",
+        "height": 420,
+        "width": 320,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        -880
+      ],
+      "id": "04dd2568-dde1-460d-8e50-36af8f89ee21",
+      "name": "Data Processing Note"
+    },
+    {
+      "parameters": {
+        "content": "## 🎯 Headline Extractor\n\n**Folder Naming**\n\nExtracts the first few words from your tweet to create a descriptive folder name.\n\nExample:\n\"Agencies are charging $50K...\"\nbecomes folder:\n\"Agencies are charging 50K\"",
+        "height": 400,
+        "width": 540,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        540,
+        -420
+      ],
+      "id": "9c7ee167-0b82-4d8c-92a7-33a768ee0827",
+      "name": "Headline Extractor Note"
+    },
+    {
+      "parameters": {
+        "content": "## 🖼️ Media Handler\n\n**Image Processing**\n\n1. Splits media array into individual URLs\n2. Downloads each image/video\n3. Uploads to the post folder\n4. Keeps original quality\n\nSupports: PNG, JPG, GIF, MP4",
+        "height": 280,
+        "width": 940,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        -420
+      ],
+      "id": "ef93f1ac-89d1-4fca-9c70-a54a6dd3b4c2",
+      "name": "Media Handler Note"
+    },
+    {
+      "parameters": {
+        "content": "## 📝 Google Docs\n\n**Draft Storage**\n\n1. Creates doc in the post folder\n2. Inserts AI-generated content\n3. Formats for easy editing\n4. Links back to original tweet\n\nYou can edit directly in Google Docs if needed!",
+        "height": 420,
+        "width": 640,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        -560
+      ],
+      "id": "ccda6a25-3209-4044-a0f6-3d0940b2cb6e",
+      "name": "Google Docs Note"
+    },
+    {
+      "parameters": {
+        "content": "## 📁 Create Post Folder\n\nCreates a dedicated Google Drive folder for each Twitter post to store the LinkedIn draft and media files.",
+        "height": 340,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        -420
+      ],
+      "id": "99e52f21-59ec-4240-86a0-5a27453fb559",
+      "name": "Create Folder Note1"
+    }
+  ],
+  "pinData": {
+    "Upload Media to Folder": [
+      {
+        "json": {
+          "kind": "drive#file",
+          "id": "1csHUbewo_dQ-bCOYea52ZoHmXb5gqbid",
+          "name": "media-0.",
+          "mimeType": "image/png",
+          "starred": false,
+          "trashed": false,
+          "explicitlyTrashed": false,
+          "parents": [
+            "17pyC9GRdg0nK622p1Jw9yJ7oFbxg2jLG"
+          ],
+          "spaces": [
+            "drive"
+          ],
+          "version": "2",
+          "webContentLink": "https://drive.google.com/uc?id=1csHUbewo_dQ-bCOYea52ZoHmXb5gqbid&export=download",
+          "webViewLink": "https://drive.google.com/file/d/1csHUbewo_dQ-bCOYea52ZoHmXb5gqbid/view?usp=drivesdk",
+          "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/image/png",
+          "hasThumbnail": true,
+          "thumbnailLink": "https://lh3.googleusercontent.com/drive-storage/AJQWtBNWjdCoLY6nJ488hmyjRIKkyXREy7979QFuZLxCeJJpolN_hyuEirmV-km0wTslVQeVPyvPzBFfwRzRVXgD9QtRny90G4Q4Lh1IeL-kdn1J5ls=s220",
+          "thumbnailVersion": "2",
+          "viewedByMe": false,
+          "createdTime": "2025-06-19T10:44:25.118Z",
+          "modifiedTime": "2025-06-19T10:44:26.209Z",
+          "modifiedByMeTime": "2025-06-19T10:44:26.209Z",
+          "modifiedByMe": true,
+          "owners": [
+            {
+              "kind": "drive#user",
+              "displayName": "Noah Epstein",
+              "photoLink": "https://lh3.googleusercontent.com/a/ACg8ocJBteYm9npgJxtbe9QG4-xSxD-mnP_C_iXNMyoMZDb4DNKMGIo=s64",
+              "me": true,
+              "permissionId": "02615311290435300319",
+              "emailAddress": "noahblend@gmail.com"
+            }
+          ],
+          "lastModifyingUser": {
+            "kind": "drive#user",
+            "displayName": "Noah Epstein",
+            "photoLink": "https://lh3.googleusercontent.com/a/ACg8ocJBteYm9npgJxtbe9QG4-xSxD-mnP_C_iXNMyoMZDb4DNKMGIo=s64",
+            "me": true,
+            "permissionId": "02615311290435300319",
+            "emailAddress": "noahblend@gmail.com"
+          },
+          "shared": false,
+          "ownedByMe": true,
+          "capabilities": {
+            "canAcceptOwnership": false,
+            "canAddChildren": false,
+            "canAddMyDriveParent": false,
+            "canChangeCopyRequiresWriterPermission": true,
+            "canChangeSecurityUpdateEnabled": false,
+            "canChangeViewersCanCopyContent": true,
+            "canComment": true,
+            "canCopy": true,
+            "canDelete": true,
+            "canDisableInheritedPermissions": false,
+            "canDownload": true,
+            "canEdit": true,
+            "canEnableInheritedPermissions": true,
+            "canListChildren": false,
+            "canModifyContent": true,
+            "canModifyContentRestriction": true,
+            "canModifyEditorContentRestriction": true,
+            "canModifyOwnerContentRestriction": true,
+            "canModifyLabels": false,
+            "canMoveChildrenWithinDrive": false,
+            "canMoveItemIntoTeamDrive": true,
+            "canMoveItemOutOfDrive": true,
+            "canMoveItemWithinDrive": true,
+            "canReadLabels": false,
+            "canReadRevisions": true,
+            "canRemoveChildren": false,
+            "canRemoveContentRestriction": false,
+            "canRemoveMyDriveParent": true,
+            "canRename": true,
+            "canShare": true,
+            "canTrash": true,
+            "canUntrash": true
+          },
+          "viewersCanCopyContent": true,
+          "copyRequiresWriterPermission": false,
+          "writersCanShare": true,
+          "permissions": [
+            {
+              "kind": "drive#permission",
+              "id": "02615311290435300319",
+              "type": "user",
+              "emailAddress": "noahblend@gmail.com",
+              "role": "owner",
+              "displayName": "noahblend",
+              "deleted": false,
+              "pendingOwner": false
+            }
+          ],
+          "permissionIds": [
+            "02615311290435300319"
+          ],
+          "originalFilename": "Untitled",
+          "fullFileExtension": "",
+          "fileExtension": "",
+          "md5Checksum": "438ac0be3ad7a9172dc6e7eab51f166a",
+          "sha1Checksum": "c2655501a8c34dbc0d5d920b59a0dd43dd1c9266",
+          "sha256Checksum": "61b918915a3bd55eff8cc2d10690d291a7abba39ad30c38633d036175193dc77",
+          "size": "112429",
+          "quotaBytesUsed": "112429",
+          "headRevisionId": "0B4Y9EoIoqeKEUytrQSt2RFViU01qYXFvQkxBdm1zd3pXNkJNPQ",
+          "imageMediaMetadata": {
+            "width": 709,
+            "height": 595,
+            "rotation": 0
+          },
+          "isAppAuthorized": true,
+          "linkShareMetadata": {
+            "securityUpdateEligible": false,
+            "securityUpdateEnabled": true
+          },
+          "inheritedPermissionsDisabled": false
+        }
+      }
+    ],
+    "Apify Twitter Scraper1": [
+      {
+        "json": {
+          "data": {
+            "id": "CaeS4GFhcNq5P0kD3",
+            "actId": "61RPP7dywgiy0JPD0",
+            "userId": "a5qTlG0UgGkfhBmCX",
+            "startedAt": "2025-06-19T10:44:01.540Z",
+            "finishedAt": "2025-06-19T10:44:21.452Z",
+            "status": "SUCCEEDED",
+            "meta": {
+              "origin": "API",
+              "userAgent": "n8n"
+            },
+            "stats": {
+              "inputBodyLen": 410,
+              "migrationCount": 0,
+              "rebootCount": 0,
+              "restartCount": 0,
+              "durationMillis": 19782,
+              "resurrectCount": 0,
+              "runTimeSecs": 19.782,
+              "metamorph": 0,
+              "computeUnits": 0.00137375,
+              "memAvgBytes": 69338642.08446573,
+              "memMaxBytes": 79261696,
+              "memCurrentBytes": 72609792,
+              "cpuAvgUsage": 5.773592385848153,
+              "cpuMaxUsage": 120.14829916897507,
+              "cpuCurrentUsage": 3.1493436293436297,
+              "netRxBytes": 91897,
+              "netTxBytes": 30683
+            },
+            "options": {
+              "build": "latest",
+              "timeoutSecs": 60,
+              "memoryMbytes": 256,
+              "maxItems": 1000,
+              "diskMbytes": 512
+            },
+            "buildId": "exOtlYg7uWmaXzeYF",
+            "exitCode": 0,
+            "defaultKeyValueStoreId": "vfo5NMx43bC6ORau9",
+            "defaultDatasetId": "IXD4wpKkeAp6bDRJY",
+            "defaultRequestQueueId": "qxVFewuIHMugysjT9",
+            "pricingInfo": {
+              "pricingModel": "PRICE_PER_DATASET_ITEM",
+              "reasonForChange": "We are introducing Apify Store discounts to offer better pricing to our customers.",
+              "startedAt": "2025-06-10T10:00:00.000Z",
+              "unitName": "tweet",
+              "apifyMarginPercentage": 0.2,
+              "createdAt": "2025-06-04T13:26:42.641Z",
+              "notifiedAboutFutureChangeAt": "2025-06-04T13:27:27.336Z",
+              "notifiedAboutChangeAt": "2025-06-10T11:05:17.674Z",
+              "pricePerUnitUsd": 0.0004
+            },
+            "platformUsageBillingModel": "DEVELOPER",
+            "generalAccess": "FOLLOW_USER_SETTING",
+            "buildNumber": "0.0.941",
+            "containerUrl": "https://jhxn3zwhrahh.runs.apify.net"
+          }
+        }
+      }
+    ],
+    "Get Scraped Tweets2": [
+      {
+        "json": {
+          "data": [
+            {
+              "id": "1935276943449976839",
+              "text": "Agencies are charging $50K for automations you can build in a fucking weekend with $20 worth of APIs.\n\nI've seen the proposals. I've seen the \"custom solutions.\" It's embarrassing.\n\nWhat they sell for $50K:\n- Zapier workflows with fancy branding\n- Basic data transformations they call \"AI integration\"\n- Email sequences that could run on Mailchimp\n- \"Custom dashboards\" that are just embedded Google Sheets\n\nWhat it actually costs to build:\n- OpenAI API: $5/month\n- n8n hosting: $20/month\n- Webhook endpoints: Free\n- Your weekend: Priceless education\n\nThe agency playbook:\n1) Overcomplicate simple problems\n2) Use buzzwords like \"machine learning pipeline\"\n3) Charge by the hour for googling error messages\n4) Deliver something that breaks when they leave\n\nThe builder approach:\n1) Understand the actual business problem\n2) Build the simplest solution that works\n3) Add error handling so it doesn't break\n4) Own the system completely\n\nThe dirty secret? Most agency \"automation experts\" learned n8n 3 months ago from the same YouTube tutorials you can watch for free.\n\nThey're not smarter. They're just better at selling.\n\nStop paying agencies to learn on your cash. Build it yourself and keep the $50K for something useful.\n\nCan use those funds for more coffee of coke ( if you swing that way). Or a vacation from dealing with agencies.\n\nComment if you want the anti-agency builder's toolkit that saved me from ever hiring these digital consultants again.",
+              "createdAt": "Wed Jun 18 10:02:33 +0000 2025",
+              "url": "https://x.com/NoahEpstein_/status/1935276943449976839",
+              "likeCount": 523,
+              "retweetCount": 40,
+              "replyCount": 237,
+              "quoteCount": 2,
+              "media": [
+                "https://pbs.twimg.com/media/Gtt8H4WWQAA9Tg1.png"
+              ],
+              "author": {
+                "type": "user",
+                "userName": "NoahEpstein_",
+                "url": "https://x.com/NoahEpstein_",
+                "twitterUrl": "https://twitter.com/NoahEpstein_",
+                "id": "1491071979155247110",
+                "name": "Nozz",
+                "isBlueVerified": true,
+                "profilePicture": "https://pbs.twimg.com/profile_images/1921531026083323905/ZBNhQZHa_normal.jpg",
+                "coverPicture": "https://pbs.twimg.com/profile_banners/1491071979155247110/1747495073",
+                "description": "Building a community of n8n warlords who know how to build, sell & deploy AI agents that actually print money https://t.co/KMUhWm1Gkd",
+                "location": "Book a call 🔀",
+                "followers": 11610,
+                "following": 180,
+                "status": "",
+                "canDm": true,
+                "canMediaTag": true,
+                "createdAt": "Tue Feb 08 15:30:54 +0000 2022",
+                "entities": {
+                  "description": {
+                    "urls": [
+                      {
+                        "display_url": "skool.com/agent-n",
+                        "expanded_url": "https://www.skool.com/agent-n",
+                        "url": "https://t.co/KMUhWm1Gkd",
+                        "indices": [
+                          110,
+                          133
+                        ]
+                      }
+                    ]
+                  },
+                  "url": {
+                    "urls": [
+                      {
+                        "display_url": "linktr.ee/noahepstein_",
+                        "expanded_url": "https://linktr.ee/noahepstein_",
+                        "url": "https://t.co/vlep84sYG4",
+                        "indices": [
+                          0,
+                          23
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "fastFollowersCount": 0,
+                "favouritesCount": 109,
+                "hasCustomTimelines": false,
+                "isTranslator": false,
+                "mediaCount": 31,
+                "statusesCount": 753,
+                "withheldInCountries": [],
+                "affiliatesHighlightedLabel": {},
+                "possiblySensitive": false,
+                "pinnedTweetIds": []
+              },
+              "conversationId": "1935276943449976839"
+            }
+          ]
+        }
+      }
+    ],
+    "Create LinkedIn Doc": [
+      {
+        "json": {
+          "kind": "drive#file",
+          "id": "18qWfAxW5R3w_XFRbJpJwC-D9kgGy4ts-hPppEy4FURo",
+          "name": "LinkedIn Post Content",
+          "mimeType": "application/vnd.google-apps.document"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Process Posts & Update Time": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Post Folder": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn Content AI",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Media Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Media to Folder": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Post Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn Content AI": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Post Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Post Data": {
+      "main": [
+        [
+          {
+            "node": "Create LinkedIn Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create LinkedIn Doc": {
+      "main": [
+        [
+          {
+            "node": "Google Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Response Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Approved Post": {
+      "main": [
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update LinkedIn Doc": {
+      "main": [
+        [
+          {
+            "node": "Resend for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Success Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Get Last Run Time1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Last Run Time1": {
+      "main": [
+        [
+          {
+            "node": "Apify Twitter Scraper1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify Twitter Scraper1": {
+      "main": [
+        [
+          {
+            "node": "Get Scraped Tweets2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Scraped Tweets2": {
+      "main": [
+        [
+          {
+            "node": "Process Posts & Update Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Create Post Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Media URLs2": {
+      "main": [
+        [
+          {
+            "node": "Download Media2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Media Data": {
+      "main": [
+        [
+          {
+            "node": "Split Media URLs2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Media2": {
+      "main": [
+        [
+          {
+            "node": "Upload Media to Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LinkedIn Content AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Docs": {
+      "main": [
+        [
+          {
+            "node": "Send for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Get Approved Post",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cancel Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update LinkedIn Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "503e07d1-bffa-4e10-a6cb-c13429d0a665",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c0fb75cf7fe95e3dad8680101bdc45549409c0f747d9491461d65b61bd6537e9"
+  },
+  "id": "A7CpEp58fNlTaLy4",
+  "tags": []
+}
